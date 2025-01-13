@@ -6,7 +6,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 const ddbClient = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
-export const handler = async (event: APIGatewayEvent, context: Context): Promise<APIGatewayProxyResult> => {
+exports.handler = async (event: APIGatewayEvent, context: Context): Promise<APIGatewayProxyResult> => {
     try {
         const id = event.pathParameters?.drumId;
 
