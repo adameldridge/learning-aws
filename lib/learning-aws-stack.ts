@@ -10,31 +10,51 @@ export class LearningAwsStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props);
 
-        // Create DynamoDB Table
+        // DynamoDB Table
         const drumTable = new dynamodb.Table(this, 'DrumTable', {
             partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
             tableName: 'DrumTable',
-            removalPolicy: cdk.RemovalPolicy.DESTROY, // Remove table on stack delete (for dev/test only)
+            removalPolicy: cdk.RemovalPolicy.DESTROY
         });
 
-        //  Create Lambda Function
+        // Lambda - Get Drum
         const getDrumFunction = new lambdaNodejs.NodejsFunction(this, 'GetDrum', {
             runtime: lambda.Runtime.NODEJS_18_X,
-            entry: path.join(__dirname, '../lambda/getDrum.ts'), // Path to the Lambda function code
-            handler: 'handler'
+            entry: path.join(__dirname, '../lambda/getDrum.ts'),
+            handler: 'handler',
+            environment: {
+                TABLE_NAME: drumTable.tableName,
+            }
         });
 
-        // Grant Lambda Permissions to Read from DynamoDB
         drumTable.grantReadData(getDrumFunction);
 
-        // Define the API Gateway resource
-        const api = new apigateway.LambdaRestApi(this, 'DrumAPI', {
-            handler: getDrumFunction,
-            proxy: false,
+        // Lambda - Post Drum
+        const postDrumFunction = new lambdaNodejs.NodejsFunction(this, 'PostDrum', {
+            runtime: lambda.Runtime.NODEJS_18_X,
+            entry: path.join(__dirname, '../lambda/postDrum.ts'),
+            handler: 'handler',
+            environment: {
+                TABLE_NAME: drumTable.tableName,
+            }
         });
-            
-        // Define the '/hello' resource with a GET method
-        const resource = api.root.addResource('drums').addResource('{drumId}');
-        resource.addMethod('GET');
+
+        drumTable.grantWriteData(postDrumFunction);
+
+
+        // API Gateway
+        const api = new apigateway.RestApi(this, 'DrumApi', {
+            restApiName: 'Drums',
+            description: 'API with multiple endpoints under the same root path',
+        });
+        
+        const drumsResource = api.root.addResource('drums');
+
+        // POST drums
+        drumsResource.addMethod('POST', new apigateway.LambdaIntegration(postDrumFunction));
+
+        // GET drums 
+        const getDrumResource = drumsResource.addResource('{drumId}');
+        getDrumResource.addMethod('GET', new apigateway.LambdaIntegration(getDrumFunction));
     }
 }

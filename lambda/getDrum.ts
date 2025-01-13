@@ -6,24 +6,43 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 const ddbClient = new DynamoDBClient({});
 const ddbDocClient = DynamoDBDocumentClient.from(ddbClient);
 
+// Get the table name from the environment variables
+const tableName = process.env.TABLE_NAME!;
+
 exports.handler = async (event: APIGatewayEvent, context: Context): Promise<APIGatewayProxyResult> => {
     try {
         const id = event.pathParameters?.drumId;
 
         if (!id) {
-            return { statusCode: 400, body: "Missing 'id' in request"};
+            return { 
+                statusCode: 400, 
+                body: "Missing 'id' in request"
+            };
         }
 
-        const getParams = { TableName: "DrumTable", Key: { id }};
+        const getParams = { 
+            TableName: tableName, 
+            Key: { id }
+        
+        };
         const result = await ddbDocClient.send(new GetCommand(getParams));
 
         if (!result.Item) {
-            return { statusCode: 404, body: "Item not found" };
+            return { 
+                statusCode: 404, 
+                body: "Item not found" 
+            };
         }
 
-        return { statusCode: 200, body: JSON.stringify(result.Item)};
+        return { 
+            statusCode: 200, 
+            body: JSON.stringify(result.Item)
+        };
     } catch (error) {
         console.error("Error reading from DynamoDB:", error);
-        return { statusCode: 500, body: JSON.stringify(error) };
+        return { 
+            statusCode: 500, 
+            body: JSON.stringify(error) 
+        };
     }
 };
